@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soon.</title>
+
+<link id="favicon" rel="icon" type="image/png" href="icon.png" sizes="32x32">
+
+<style>
+body {
+    margin: 0;
+    background: #000;
+    color: #9800ff;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: "Courier New", monospace;
+    overflow: hidden;
+}
+
+canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.wrapper {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+#countdown {
+    font-size: clamp(2rem, 8vw, 4.5rem);
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    text-align: center;
+}
+
+#countdown a {
+    color: #9800ff;
+    text-decoration: none;
+}
+
+#countdown a:hover {
+    text-decoration: underline;
+}
+
+.icon {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+@media (max-width: 700px) {
+    .wrapper {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .icon {
+        width: 72px;
+        height: 72px;
+    }
+}
+</style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+
+<div class="wrapper">
+    <img id="iconImg" src="icon.png" alt="Skeleton Crew Icon" class="icon">
+    <div id="countdown">--:--:--:--</div>
+</div>
+
+<audio id="preSound" src="1.mp3" loop></audio>
+<audio id="daySound" src="2.mp3" loop></audio>
+
+<script>
+const target = new Date("2026-10-31T15:00:00").getTime();
+
+const display = document.getElementById("countdown");
+const iconImg = document.getElementById("iconImg");
+const favicon = document.getElementById("favicon");
+
+const preSound = document.getElementById("preSound");
+const daySound = document.getElementById("daySound");
+
+let confettiStarted = false;
+let releaseTriggered = false;
+
+// Start audio after first click
+document.body.addEventListener("click", () => {
+    preSound.play().catch(() => {});
+}, { once: true });
+
+const canvas = document.getElementById("confetti");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+const confettiPieces = [];
+const MAX_CONFETTI = 360;
+const SPAWN_RATE = 1;
+
+function createConfettiPiece() {
+    return {
+        x: Math.random() * canvas.width,
+        y: -10,
+        size: 4 + Math.random() * 6,
+        color: `hsl(${Math.random() * 360},100%,50%)`,
+        speedY: 1.5 + Math.random() * 2,
+        speedX: -0.5 + Math.random(),
+        rotation: Math.random() * 360,
+        rotationSpeed: -2 + Math.random() * 4
+    };
+}
+
+function startConfetti() {
+    if (confettiStarted) return;
+    confettiStarted = true;
+    animateConfetti();
+}
+
+function animateConfetti() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < SPAWN_RATE; i++) {
+        if (confettiPieces.length < MAX_CONFETTI) {
+            confettiPieces.push(createConfettiPiece());
+        }
+    }
+
+    for (let i = confettiPieces.length - 1; i >= 0; i--) {
+        const p = confettiPieces[i];
+
+        p.x += p.speedX;
+        p.y += p.speedY;
+        p.rotation += p.rotationSpeed;
+
+        if (p.y > canvas.height + 20) {
+            confettiPieces.splice(i, 1);
+            continue;
+        }
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(
+            -p.size / 2,
+            -p.size / 2,
+            p.size,
+            p.size
+        );
+        ctx.restore();
+    }
+
+    requestAnimationFrame(animateConfetti);
+}
+
+function triggerRelease() {
+    if (releaseTriggered) return;
+
+    releaseTriggered = true;
+
+    display.innerHTML = `
+    <a href="https://waransgaming.itch.io/skeleton-crew"
+       target="_blank"
+       rel="noopener noreferrer">
+       SKELETON CREW OUT NOW
+    </a>`;
+
+    document.title = "IT'S HERE";
+
+    iconImg.src = "icon2.png";
+    favicon.href = "icon2.png";
+
+    preSound.pause();
+    preSound.currentTime = 0;
+
+    daySound.play().catch(() => {});
+
+    startConfetti();
+}
+
+function update() {
+    const now = Date.now();
+    const distance = target - now;
+
+    if (distance <= 0) {
+        triggerRelease();
+        return;
+    }
+
+    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(
+        (distance % (1000 * 60 * 60 * 24))
+        / (1000 * 60 * 60)
+    );
+    const minutes = Math.floor(
+        (distance % (1000 * 60 * 60))
+        / (1000 * 60)
+    );
+    const seconds = Math.floor(
+        (distance % (1000 * 60))
+        / 1000
+    );
+
+    const timerText =
+        String(days).padStart(2, "0") + ":" +
+        String(hours).padStart(2, "0") + ":" +
+        String(minutes).padStart(2, "0") + ":" +
+        String(seconds).padStart(2, "0");
+
+    display.textContent = timerText;
+    document.title = timerText;
+}
+
+update();
+setInterval(update, 1000);
+</script>
+
+</body>
+</html>
